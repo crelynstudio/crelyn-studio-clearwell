@@ -1,0 +1,39 @@
+Clearwell source code: MIT, Copyright 2026 Crelyn Studio.
+
+Social brand icons (GitHub, Behance, Instagram, X/Twitter, Threads):
+Font Awesome Free 7.0.1, Fonticons, Inc. (https://fontawesome.com).
+Icons licensed under Creative Commons Attribution 4.0 International:
+https://creativecommons.org/licenses/by/4.0/
+Source: https://github.com/FortAwesome/Font-Awesome/tree/7.0.1/svgs/brands
+SVG paths converted to WPF geometry; original outlines preserved. No fonts
+or icon-library runtime are bundled. Brand marks remain their owners' marks;
+display identifies profile links and does not imply endorsement.
+
+Crelyn Studio names, marks and the two included Crelyn Studio logo files are
+brand assets. The MIT software license does not grant trademark rights or
+permission to use these marks to imply endorsement.
+
+Portable builds contain Microsoft .NET and Windows Desktop runtime components.
+Their licenses and third-party notices are included alongside the executable
+as DOTNET-LICENSE.txt and DOTNET-THIRD-PARTY-NOTICES.txt when publishing the
+self-contained build. Source: https://github.com/dotnet/runtime and
+https://github.com/dotnet/wpf .
+
+WinGet is a separate Microsoft Windows component, not bundled by Clearwell.
+Catalog applications and downloaded installers retain their own licenses and
+agreements. Clearwell does not redistribute those applications.
+
+No WinUtil source code or assets are included. The project is independently
+implemented and is not affiliated with Microsoft or Chris Titus Tech.
+
+Türkçe:
+Sosyal platform simgeleri: Font Awesome Free 7.0.1, Fonticons, Inc.; CC BY 4.0.
+Yukarıdaki kaynak SVG yolları WPF geometrisine dönüştürülmüş, biçimleri
+korunmuştur. Marka işaretleri sahiplerine aittir; bağlantılar onay/ortaklık
+anlamına gelmez. Simge fontu veya çalışma zamanı kütüphanesi eklenmemiştir.
+Kaynak kod MIT lisanslıdır; Crelyn Studio marka adları ve logolarının hakları
+ayrıdır. MIT lisansı bu markalarla onay/ortaklık izlenimi verme hakkı vermez.
+Taşınabilir sürüm Microsoft .NET/Windows Desktop bileşenleri içerir; lisansları
+ve üçüncü taraf bildirimleri birlikte sunulur. WinGet ayrıca kurulu bir Windows
+bileşenidir. Katalog uygulamalarının kendi lisansları geçerlidir. WinUtil kodu
+veya varlıkları kullanılmamıştır; Microsoft/Chris Titus Tech ile bağlantı yoktur.

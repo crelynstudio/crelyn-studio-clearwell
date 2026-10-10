@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/Clearwell/Clearwell.csproj" />
+  <Project Path="tests/Clearwell.Checks/Clearwell.Checks.csproj" />
+</Solution>
