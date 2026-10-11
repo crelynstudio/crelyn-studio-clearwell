@@ -16,6 +16,8 @@ public partial class App : Application
             catch (ArgumentException) { }
         }
         if (e.Args.Length == 2 && e.Args[0] == "--verify-ui") CaptureFolder = Path.GetFullPath(e.Args[1]);
+        if (CaptureFolder != null && Directory.Exists(CaptureFolder) && Directory.EnumerateFileSystemEntries(CaptureFolder).Any())
+        { Shutdown(2); return; }
         if (CaptureFolder == null)
         {
             var user = System.Security.Principal.WindowsIdentity.GetCurrent().User!.Value;

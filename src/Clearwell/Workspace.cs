@@ -193,13 +193,15 @@ public partial class MainWindow
         Page.Children.Add(tabs);
         if (installedView)
         {
+            Page.Children.Add(Action(L("Include current-user Store / MSIX apps", "Geçerli kullanıcı Store / MSIX uygulamalarını ekle"), () => _ = Work(L("Reading Store inventory…", "Store envanteri okunuyor…"), async token =>
+            { var desktop = await Task.Run(WindowsTools.InstalledApps, token); var storeApps = await WindowsTools.StoreApps(token); installed = desktop.Concat(storeApps).OrderBy(a => a.Name).ToList(); })));
             Page.Children.Add(Text(L("Desktop applications reported by Windows. Store apps may only appear in Windows Settings.", "Windows tarafından bildirilen masaüstü uygulamaları. Store uygulamaları yalnızca Windows Ayarları'nda görünebilir."), 13, true));
             if (installed == null) Page.Children.Add(Text(busy ? L("Reading applications…", "Uygulamalar okunuyor…") : L("The application list could not be read. Select Installed apps to retry.", "Uygulama listesi okunamadı. Tekrar denemek için Kurulu uygulamalar'ı seçin."), 14, true));
             else
             {
-                Section(L($"{installed.Count} desktop applications", $"{installed.Count} masaüstü uygulaması"));
+                Section(L($"{installed.Count(a => a.Source == "Desktop")} desktop applications · {installed.Count(a => a.Source != "Desktop")} MSIX / Appx", $"{installed.Count(a => a.Source == "Desktop")} masaüstü uygulaması · {installed.Count(a => a.Source != "Desktop")} MSIX / Appx"));
                 if (installed.Count == 0) Page.Children.Add(Text(L("No desktop applications were reported.", "Masaüstü uygulaması bildirilmedi."), 14, true));
-                foreach (var app in installed) Page.Children.Add(Row(app.Name, app.Version + " · " + app.Publisher));
+                foreach (var app in installed) Page.Children.Add(Row(app.Name, app.Version + " · " + app.Publisher + " · " + (app.Source == "Desktop" ? L("Desktop", "Masaüstü") : app.Source)));
             }
             return;
         }
@@ -279,13 +281,18 @@ public partial class MainWindow
             {
                 BusyText.Text = L("Installing ", "Kuruluyor: ") + package.Name;
                 var result = await WindowsTools.PackageAction(package.Id, true, token);
-                results.Add(package.Name + L($" · Exit code {result.Code}", $" · Çıkış kodu {result.Code}"));
-                if (result.Code != 0) { results.Add(result.Output); break; }
+                results.Add(package.Name + " · " + PackageStatus(result));
+                if (result.Code != 0 || result.Verified != true || token.IsCancellationRequested) { results.Add(result.Output); break; }
                 selectedPackages.Remove(package.Id);
             }
-        }, cancellable: false);
+        });
         if (results.Count > 0) await Inform(L("Installation results", "Kurulum sonuçları"), string.Join("\n\n", results));
     }
+    private string PackageStatus(CommandResult result) => result.Interrupted
+        ? L("Stop requested; state unknown. Check the installer and installed apps before retrying.", "Durdurma istendi; durum bilinmiyor. Yeniden denemeden önce kurucuyu ve kurulu uygulamaları kontrol edin.")
+        : result.Code == 0 && result.Verified == true ? L("Completed; package inventory verified", "Tamamlandı; paket envanteri doğrulandı")
+        : result.Code != 0 ? L("WinGet reported an error; check its output", "WinGet hata bildirdi; çıktısını kontrol edin")
+        : L("Command completed; package state could not be verified. The queue was stopped.", "Komut tamamlandı; paket durumu doğrulanamadı. Sıra durduruldu.");
     private void SearchKeyDown(object sender, KeyEventArgs e) { if (e.Key == Key.Enter) { SearchClick(sender, e); e.Handled = true; } }
     private void SearchClick(object sender, RoutedEventArgs e)
     { if (busy || dialogAnswer != null) return; searchQuery = GlobalSearch.Text.Trim(); Navigate("search"); }
