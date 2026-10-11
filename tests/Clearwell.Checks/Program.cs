@@ -1,6 +1,14 @@
 using Clearwell.Core;
 using System.IO;
 
+if (args is ["--hold"]) { await Task.Delay(60000); return; }
+if (args is ["--child", var pidPath])
+{
+    using var child = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!) { ArgumentList = { "--hold" }, UseShellExecute = false, CreateNoWindow = true })!;
+    File.WriteAllText(pidPath, child.Id.ToString());
+    await Task.Delay(60000); return;
+}
+
 if (args.Length != 1) throw new ArgumentException("Pass an empty test workspace directory.");
 var testRoot = Path.GetFullPath(args[0]);
 if (Directory.Exists(testRoot) && Directory.EnumerateFileSystemEntries(testRoot).Any()) throw new InvalidOperationException("Test directory must be empty.");
@@ -69,6 +77,15 @@ var linkResult = await WindowsTools.Run(Path.Combine(Environment.GetFolderPath(E
 Check(linkResult.Code == 0, "Junction fixture created");
 var linkedScan = CleanupService.Scan(root, CancellationToken.None);
 Check(linkedScan.Files.All(f => f.Path != victim) && linkedScan.Skipped > 0, "Junction traversal is excluded");
+Check(linkedScan.Reasons.GetValueOrDefault("link") > 0, "Linked files have a specific skip reason");
+using (var handle = new FileStream(locked, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+    Check(CleanupService.Scan(root, CancellationToken.None).Reasons.GetValueOrDefault("locked") > 0, "Locked scan candidates have a specific reason");
+Check(CleanupService.Scan(root, CancellationToken.None, retentionDays: 7).Files.Count == 0, "Seven-day retention preserves younger fixtures");
+Check(CleanupService.Scan(root, CancellationToken.None, maximumEntries: 1).Truncated, "Entry limit explicitly reports partial scan");
+Check(!CleanupService.SafeCustomTemp(Path.GetPathRoot(sandbox)!) && !CleanupService.SafeCustomTemp(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)), "Redirected TEMP refuses drive and profile roots");
+var csvCandidate = new FileCandidate("=formula,\"quoted\"", 8, DateTime.UtcNow.Ticks);
+var csv = CleanupService.ReviewCsv([new(root, [csvCandidate], 0, false)], new HashSet<string> { csvCandidate.Path });
+Check(csv.Contains("False,\"'=formula,\"\"quoted\"\"\"") && csv.Contains("ModifiedUtc"), "Review CSV preserves exclusions, escapes quotes and neutralizes spreadsheet formulas");
 Check(!CleanupService.DeleteChecked(sandbox, new FileCandidate(victim, 4, File.GetLastWriteTimeUtc(victim).Ticks)), "Deletion outside root refused");
 Check(File.Exists(victim), "Outside-root victim survives");
 using (var cts = new CancellationTokenSource())
@@ -84,7 +101,7 @@ Check(WindowsTools.Catalog.All(p => p.Source is "winget" or "msstore"), "Catalog
 Check(WindowsTools.Catalog.Single(p => p.Name == "WhatsApp") is { Id: "9NKSQGP7F2NH", Category: "communication", Source: "msstore" }, "WhatsApp uses the official Store package");
 Check(WindowsTools.PackageArguments("9nksqgp7f2nh", true).SequenceEqual(new[] { "install", "--id", "9nksqgp7f2nh", "--exact", "--disable-interactivity", "--source", "msstore", "--accept-source-agreements", "--accept-package-agreements" }), "WhatsApp installation selects Microsoft Store");
 Check(WindowsTools.PackageArguments("Git.Git", true).Contains("winget") && WindowsTools.PackageArguments("Example.Package", true).Contains("winget"), "Desktop and custom packages retain winget source");
-Check(!WindowsTools.PackageArguments("9NKSQGP7F2NH", false).Contains("--source"), "Uninstall retains local package discovery");
+Check(WindowsTools.PackageArguments("9NKSQGP7F2NH", false).Contains("msstore"), "Uninstall explicitly selects the reviewed package source");
 Check(WindowsTools.Catalog.All(p => p.Category is "web" or "communication" or "dev" or "media" or "productivity" or "utilities" or "games" or "runtimes"), "Catalog categories have UI translations");
 Check(WindowsTools.Catalog.All(p => !string.IsNullOrWhiteSpace(p.Name) && !string.IsNullOrWhiteSpace(p.DescriptionEn) && !string.IsNullOrWhiteSpace(p.DescriptionTr)), "Every catalog entry has a name and bilingual descriptions");
 Check(SystemSettings.All.Select(s => s.Id).Distinct().Count() == SystemSettings.All.Count, "Setting IDs are unique");
@@ -95,6 +112,34 @@ store.Preferences.Language = "tr"; store.Preferences.Dark = false; store.SavePre
 store.Add(new ChangeRecord { Target = "advertising", Before = null, After = "0" });
 var reloaded = new LocalStore(stateDir);
 Check(reloaded.Preferences.Language == "tr" && !reloaded.Preferences.Dark && reloaded.Changes.Count == 1 && reloaded.Changes[0].Before == null, "Preferences and null original values round-trip");
+Check(File.ReadAllText(Path.Combine(stateDir, "changes.json")).Contains("SchemaVersion"), "Recovery files have an explicit schema version");
+File.WriteAllText(Path.Combine(stateDir, "preferences.json"), "{broken");
+var badPreferences = new LocalStore(stateDir);
+Check(badPreferences.PreferencesDamaged && !badPreferences.Damaged && badPreferences.Changes.Count == 1, "Bad preferences do not disable valid recovery history");
+badPreferences.SavePreferences();
+Check(!badPreferences.PreferencesDamaged && Directory.GetFiles(stateDir, "preferences-damaged-*.json").Length == 1, "Repair preserves the damaged preferences before saving defaults");
+var legacyDir = Path.Combine(testRoot, "legacy"); Directory.CreateDirectory(legacyDir);
+File.WriteAllText(Path.Combine(legacyDir, "changes.json"), System.Text.Json.JsonSerializer.Serialize(Enumerable.Range(0, 10001).Select(_ => new ChangeRecord { Target = "advertising", After = "0", State = "undone" })));
+var legacy = new LocalStore(legacyDir);
+Check(!legacy.Damaged && legacy.Changes.Count == 10001, "Legacy history with 10001 records loads without permanent lockout");
+legacy.Add(new ChangeRecord { Target = "advertising", After = "0", State = "pending" });
+Check(legacy.ArchiveUndone() == 10001 && legacy.Changes.Count == 1 && legacy.Changes[0].State == "pending", "Archive retains all actionable records and archives only undone records");
+Check(new LocalStore(legacyDir).Changes.Count == 1 && Directory.GetFiles(legacyDir, "changes-archive-*.json").Length == 1, "Archive and live history survive reload");
+var newest = new ChangeRecord { Target = "advertising", After = "0" }; legacy.Add(newest);
+Check(legacy.IsLatest(newest) && !legacy.IsLatest(legacy.Changes[0]), "Only the latest related actionable record may be undone");
+File.WriteAllText(Path.Combine(legacyDir, "changes.json"), "{\"SchemaVersion\":999,\"Records\":[]}");
+Check(new LocalStore(legacyDir).Damaged, "Unknown future recovery schema fails closed");
+File.WriteAllText(Path.Combine(legacyDir, "changes.json"), System.Text.Json.JsonSerializer.Serialize(new[] { new ChangeRecord { Target = "advertising", Before = "invalid-number", After = "0" } }));
+Check(new LocalStore(legacyDir).Damaged, "Malformed DWORD originals fail closed before any mutation");
+File.WriteAllText(Path.Combine(legacyDir, "changes.json"), System.Text.Json.JsonSerializer.Serialize(new[] { new ChangeRecord { Target = "advertising", After = "unexpected" } }));
+Check(new LocalStore(legacyDir).Damaged, "Unexpected recovery target values fail closed");
+var activityDir = Path.Combine(testRoot, "activity");
+for (var i = 0; i < 205; i++) ActivityLog.Add(activityDir, "cleanup", "completed");
+Check(ActivityLog.Read(activityDir).Count == 200, "Local activity has a bounded 200-entry retention policy");
+var diagnostics = ActivityLog.Diagnostics(activityDir);
+Check(!diagnostics.Contains(testRoot) && !diagnostics.Contains(Environment.UserName, StringComparison.OrdinalIgnoreCase) && diagnostics.Contains("Windows"), "Support export includes platform details without user names or fixture paths");
+File.WriteAllText(Path.Combine(activityDir, "activity.json"), "[{\"TimeUtc\":\"2026-10-11T00:00:00Z\",\"Area\":\"private-path\",\"Outcome\":\"completed\"}]");
+Throws<InvalidDataException>(() => ActivityLog.Diagnostics(activityDir), "Support export refuses unexpected free-text activity fields");
 File.WriteAllText(Path.Combine(stateDir, "changes.json"), "{broken");
 var corrupt = new LocalStore(stateDir);
 Check(corrupt.Damaged, "Corrupt recovery data detected");
@@ -120,4 +165,33 @@ var plans = await WindowsTools.PowerPlans(CancellationToken.None);
 Check(plans.Count > 0 && plans.Count(p => p.Active) == 1, "Read-only power plan discovery works on host");
 var cmd = await WindowsTools.Run(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe"), ["/d", "/c", "echo", "clearwell-check"], CancellationToken.None);
 Check(cmd.Code == 0 && cmd.Output.Contains("clearwell-check"), "Process runner captures real output");
+Check(WindowsTools.PackagePresence(0) == true && WindowsTools.PackagePresence(unchecked((int)0x8A150014)) == false && WindowsTools.PackagePresence(1) == null, "Package inventory distinguishes present, absent and unknown");
+foreach (var name in new[] { "Balanced", "Dengeli", "Ausbalanciert", "バランス" })
+{
+    var parsed = WindowsTools.ParsePowerPlans($"Localized prefix: 381b4222-f694-41f0-9685-ff5bb260df2e  ({name}) *\r\n");
+    Check(parsed is [{ Active: true }] && parsed[0].Name == name, "Localized power plan fixture: " + name);
+}
+Check(WindowsTools.ParsePowerPlans("Unexpected output").Count == 0, "Unknown power output yields an empty read-only result");
+var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+var childPid = Path.Combine(testRoot, "child.pid");
+try
+{
+    await WindowsTools.Run(Environment.ProcessPath!, ["--child", childPid], CancellationToken.None, 2);
+    throw new InvalidOperationException("Timeout did not occur.");
+}
+catch (TimeoutException) { Check(stopwatch.Elapsed < TimeSpan.FromSeconds(10), "Timeout returns promptly rather than waiting on inherited output pipes"); }
+Check(File.Exists(childPid), "Child process fixture started");
+var fixturePid = int.Parse(File.ReadAllText(childPid));
+try
+{
+    using var child = System.Diagnostics.Process.GetProcessById(fixturePid);
+    if (!child.HasExited) { child.Kill(true); throw new InvalidOperationException("Process tree child survived timeout."); }
+}
+catch (ArgumentException) { }
+Check(true, "Timeout terminates the fixture process tree");
+using (var cancelRun = new CancellationTokenSource(TimeSpan.FromSeconds(1)))
+{
+    try { await WindowsTools.Run(Environment.ProcessPath!, ["--hold"], cancelRun.Token); throw new InvalidOperationException("Cancellation did not occur."); }
+    catch (OperationCanceledException) { Check(true, "Caller cancellation stops a running fixture"); }
+}
 Console.WriteLine($"{checks} checks passed. Only fixture files were deleted; no real system settings changed.");

@@ -1,191 +1,150 @@
 # Clearwell
 
-**Windows maintenance, with the details in plain sight.** A native C# / WPF desktop utility with English and Turkish, dark and light appearances, and a review-before-change workflow.
+Windows maintenance with a review before every change. Native C# / WPF, English and Turkish, light and dark appearances. Local data; no telemetry, account or API key.
 
-**0.2.0-preview.1 — development preview. Approved for preview publication.** Windows 10 testing and real-world system changes still require isolated-machine validation. This is not a stable maintenance recommendation.
+**0.3.0-preview.1 is an unsigned development preview, not a stable release.** Live settings, power, UAC and installer tests on disposable Windows 10/11 machines remain required.
 
-![Clearwell overview in dark appearance](docs/screenshots/overview-dark.png)
+[Download preview](https://github.com/crelynstudio/crelyn-studio-clearwell/releases/tag/v0.3.0-preview.1) · [Changes](CHANGELOG.md) · [Audit and validation plan](docs/AUDIT-2026-10.md) · [Türkçe](#türkçe)
 
-## What it does
+The download link becomes available after publication. Choose the Clearwell-0.3.0-preview.1-win-x64.zip application package; GitHub's automatic source archive is not an executable package.
 
-- Shows actual processor, active display adapter, device model and Windows version; a physical-memory chart and fixed-volume bars refresh on request, without a monitoring service.
-- Uses a graphite/cyan interface with dark and light appearances, a quiet caption, and separate Discover / Installed apps views. The original non-letter icon combines data layers and a cleaning sweep.
-- Searches workspace pages, preferences and applications. Filters the curated app library by category/name and reviews selected apps before sequential installation; the queue stops at the first failure.
-- Includes 112 applications across browsers, communication, development, media, productivity, utilities, games and runtimes. WhatsApp installs from Microsoft Store; a WhatsApp account and Store availability are required. Examples: WinRAR, Acrobat Reader, Microsoft Office, Visual Studio, HWiNFO, Steam, .NET, Visual C++ and DirectX. Publisher requirements, accounts and licenses vary by application.
-- Opens ten built-in Windows tools, including Task Manager, Device Manager, storage, recovery and Windows Update controls. These shortcuts do not change policies automatically.
-- Read-only scanning of standard user Temp, Windows Temp, Prefetch and application crash dumps; confirmed permanent deletion of selected eligible files.
-- Excludes files modified in the last 24 hours, links/reparse points, locked files and files changed since the scan. Prefetch/crash dumps start unselected.
-- Explains user-scoped game-capture, visual-effects and privacy preferences before applying them; records original values for undo.
-- Inspects startup Run keys and startup folders, with Windows Settings for enabling/disabling entries.
-- Installs a curated catalog or an exact package ID through WinGet; uninstalls by exact package ID or opens Windows installed-app management.
-- Lists actual power plans and switches between those your device provides, recording the previous plan.
-- Custom minimize/maximize/close controls, keyboard focus, resizable window, reduced-motion support, and persistent local language/appearance preferences.
+![Clearwell system overview in dark appearance](docs/screenshots/overview-dark.png)
 
-![Clearwell overview in light appearance](docs/screenshots/overview-light.png)
-![Clearwell at 900 by 560 logical pixels with scrollable content](docs/screenshots/overview-small.png)
-![Read-only cleanup scan from the development machine](docs/screenshots/cleanup-scan.png)
-![Application library with a demonstration selection, no installation executed](docs/screenshots/application-library.png)
-![Windows performance preferences in Turkish and light appearance](docs/screenshots/performance-turkish-light.png)
-![Crelyn Studio introduction and contact links in light appearance](docs/screenshots/studio-about-light.png)
+## New in this preview
 
-These are actual captures of the running preview. Hardware and scan totals are real results from the development environment, not performance promises. The library selection demonstrates the queue; it does not indicate installed apps. Paths are shown symbolically to avoid exposing user names.
+- Review individual cleanup files by name, full path, size, modification time and category; filter, exclude files and export CSV. Each deletion still verifies file identity.
+- Keep files modified within 1, 7 or 30 days; the new default is **7 days**. Advanced categories remain unselected. Partial scans need a second confirmation. Skip reasons distinguish access, lock, links and I/O failures.
+- Cancel WinGet operations/queues; stop process trees where possible and report unknown state for detached/elevated installers. Verify exact inventory after commands and review an installed target before uninstalling. Queues stop on failure or unverifiable inventory.
+- Corrupt preferences no longer block valid recovery history. Repair preserves the damaged original. Read legacy history, write a versioned schema, and archive only undone records without losing actionable records.
+- Keep the last 200 local activities without file paths/installer output. Export platform/error diagnostics locally. Optional current-user Store/MSIX discovery supplements desktop inventory.
+- Windows CI, read-only catalog checks, and a single test/publish/ZIP/SHA-256/independent verification command. Workflows must run after source upload; a local pass is not a GitHub CI pass.
 
-## Run the portable preview
+![Individual cleanup review, isolated example files, dark appearance](docs/screenshots/cleanup-review-dark.png)
+![Individual cleanup review, isolated example files, light appearance](docs/screenshots/cleanup-review-light.png)
 
-Open `Clearwell.exe` from the preview folder. Keep its accompanying license and notice files. This x64 build includes .NET; installing .NET separately is unnecessary. It is an unsigned development build, so Windows may display a reputation warning. Only run binaries from a source you trust; no security setting needs to be disabled.
+Review screenshots show **example fixtures**, not personal files. Verification mode substitutes %TEST_FIXTURE% for its isolated directory; normal use shows full local paths. Hardware/scan summaries are actual development-machine readings, not performance promises.
 
-Use standard privileges first. Windows Temp and Prefetch may contain inaccessible files; the app reports skipped items. The optional administrator restart requests Windows UAC permission and never starts a cleanup automatically. If another administrator account is used, its settings and history are separate.
+## Other features
 
-The intended platforms are Windows 10 22H2 and Windows 11 x64. Only the development Windows 11 host has been exercised so far. No ARM64/x86 binaries are provided. Startup and maximization fit the current monitor work area, with per-monitor DPI awareness. The usual minimum is 900 × 560 logical pixels, reduced when the work area is smaller. Content remains scrollable. Physical mixed-DPI monitor switching still requires user testing.
+On-demand CPU, active graphics adapter, Windows, physical memory, uptime and disk snapshots. Search pages, settings, tools and a curated 112-app library. Review a queue or exact WinGet ID; publishers' accounts, licenses and terms vary. WhatsApp uses Microsoft Store. Inspect partial startup entries, open ten Windows tools, choose user-scoped performance/privacy preferences, switch existing power plans and undo supported changes. No promised FPS increases or invented power plans.
 
-## Build and check from source
+![Application library; example selection without installation](docs/screenshots/application-library.png)
+![Turkish Windows preference explanations in light appearance](docs/screenshots/performance-turkish-light.png)
 
-The original Clearwell mark is defined in `src/Clearwell/Assets/Brand.xaml`. To regenerate its PNG and six-size Windows icon after editing the vector source, run `powershell -NoProfile -STA -File .\tools\Export-Icon.ps1` on Windows.
+## Run or upgrade
 
-Requires Windows, PowerShell and a .NET 10 SDK. First restore/build and self-contained publish need internet to obtain Microsoft runtime components. No third-party UI NuGet packages are used.
+1. Download the preview ZIP and matching .zip.sha256. Compare the output below with the checksum file. A matching hash detects corruption; it is not a code-signing certificate.
+2. Close the old Clearwell. Extract into a **new folder**, keep all included licenses/notices and open Clearwell.exe. The x64 .NET runtime is included. Do not disable Windows security for this unsigned preview.
+3. Begin with standard user access and read-only scanning. Administrator restart requires Windows permission; another administrator account has separate data.
 
-Run from the repository root:
+~~~powershell
+Get-FileHash .\Clearwell-0.3.0-preview.1-win-x64.zip -Algorithm SHA256
+~~~
 
-```powershell
-dotnet build Clearwell.slnx -c Release
-dotnet run --project src/Clearwell -c Release
+Back up %LOCALAPPDATA%\CrelynStudio\Clearwell before upgrading. Old array-format history is read; new writes use schema 1. **After new recovery records are saved, do not downgrade to 0.2 with the same profile**: it cannot read the new envelope. A profile backup does not undo subsequent Windows changes.
+
+## Build and check
+
+Windows x64, PowerShell and **.NET SDK 10.0.401** (pinned in global.json). No third-party UI packages. First restore/publish needs internet for Microsoft packages. From this repository root:
+
+~~~powershell
+dotnet restore Clearwell.slnx --locked-mode
+dotnet build Clearwell.slnx -c Release --no-restore
+dotnet run --project src/Clearwell -c Release --no-build
 dotnet run --project tests/Clearwell.Checks -c Release -- .\artifacts\checks-01
-```
+.\build-release.ps1
+~~~
 
-The checks directory must be empty or new. Checks create and delete **their own fixture files only**, including a directory junction; they do not alter Windows preferences, install applications or change power plans. Use a new checks directory on each run. Checks also read actual power plans.
+The checks folder must be new/empty. Checks delete only their fixture files, create a junction, test cancellation/child processes and read actual hardware/power plans. They do not change Windows preferences or install software. build-release.ps1 runs checks, publishes, creates ZIP/checksum, extracts independently and verifies version/UI. Outputs: artifacts/releases/. Existing releases are never overwritten. Validation evidence: ignored artifacts/release-validation-*/. Provenance is an unsigned local build record, not a supply-chain attestation.
 
-To create the portable preview with runtime licenses:
+publish.ps1 creates just the portable folder and runtime notices. With PowerShell 7, pwsh -NoProfile -File .\tools\Check-Catalog.ps1 performs read-only catalog queries without installation or accepting new source agreements. Source/network/region failures need review. Clearwell.exe --verify-ui <new-folder> uses an isolated profile, renders both languages/themes and compact sizes, checks dialogs/exclusions, and exits with result.txt without system mutations. Recreate the icon with powershell -NoProfile -STA -File .\tools\Export-Icon.ps1; vector source is Assets/Brand.xaml.
 
-```powershell
-powershell -NoProfile -File .\publish.ps1
-```
+## Safety, privacy and limitations
 
-Output: `artifacts/Clearwell-0.2.0-preview.1-win-x64/`. A direct `dotnet publish` is insufficient for distribution unless you also include the runtime licenses and third-party notices copied by this script.
+- **Permanent deletion; no quarantine, recycle bin or undo.** Close other apps, inspect files and back up important data. Recent, linked, changed/replaced and inaccessible files are protected. Scan totals do not promise reclaimable space.
+- Standard user/Windows Temp, Prefetch and crash dumps are scanned. A redirected local TEMP ending in Temp/tmp, outside protected roots with no reparse ancestors, appears as an advanced unselected category. UNC, broad/profile roots and other redirected names are intentionally excluded. Identity-checked handle deletion is retained.
+- Recovery records precede settings/power mutations. Undo reconciles interrupted/already-restored actions, checks current state and requires the latest related record first. Outside changes are not overwritten. New writes reject non-DWORD registry preferences; legacy string originals remain restorable. History is not a Windows backup.
+- Activity is local, bounded and separate from recovery. CSV contains full paths: review before sharing. Support export contains version/platform, operation areas/outcomes and error codes. No automatic upload.
+- UI, cleanup, local history and Windows preferences work offline after installation. WinGet/source/catalog operations need source/network availability. No analytics, runtime CDN or background agent.
+- Detached/elevated third-party installers can survive cancellation. Inspect their windows and re-read inventory before retrying. Unverified state is not proof of absence. No install/uninstall rollback.
+- Desktop inventory uses uninstall registry entries; optional Appx/MSIX is current-user only and can include Windows packages. Startup inspection excludes services, tasks and RunOnce.
+- Package architecture is x64. Windows 11 is locally exercised; Windows 10 22H2 remains a target pending VM validation. ARM64/x86 packages are not supplied. Actual screen-reader, physical 125/150/200% DPI, multi-monitor and high-contrast user tests remain pending; automated rendering/geometry checks do not replace them.
+- No signing certificate. No stable-release claim until live operation/accessibility acceptance is completed. See all 36 audit findings and remaining work in the audit document.
 
-Optional read-only UI verification using the published preview:
-
-```powershell
-.\artifacts\Clearwell-0.2.0-preview.1-win-x64\Clearwell.exe --verify-ui .\artifacts\ui-proof
-```
-
-It renders every page in both languages/themes, checks twelve compact layouts at 1000 × 700 and 900 × 560, cancels a test confirmation, performs a read-only live scan and power-plan query, verifies catalog filtering/selection and workspace search, and tests preference persistence in an isolated profile beneath that output folder. It exits automatically and writes `result.txt`. It never executes deletion or applies system changes. Generated files are ignored by Git; do not upload `artifacts`, `bin` or `obj` manually.
-
-## Data, privacy and recovery
-
-Normal-use settings: `%LOCALAPPDATA%\CrelynStudio\Clearwell\preferences.json`. Recovery records: `changes.json` in the same folder. Records contain setting IDs, previous/new values, timestamps and state; no file listing or telemetry is uploaded. There is one running instance per user. Do not remove recovery records if you want to undo changes.
-
-Recovery data is saved before mutation. Corrupt/unreadable recovery data blocks further preference/power mutations and is preserved. History marks interrupted operations as pending. Undo refuses to overwrite a setting that no longer matches the recorded applied value. Sign-out/restart may be needed; Windows policy can override user preferences. **This is preference recovery, not a full system backup or Windows restore point.**
-
-Deletion is permanent. Filesystem metadata and the final file handle are checked again before deletion; a changed/locked file is skipped. There is a 100,000-entry scan limit per category, with partial results identified. Only standard Temp locations are included; a custom relocated `%TEMP%` directory is not scanned. Crash dumps may be useful for troubleshooting. Prefetch is a rebuilding Windows cache, not a guaranteed performance improvement.
-
-## Internet and external tools
-
-The UI, cleanup, settings and power controls make no network requests and need no account/API key. Native Windows settings links open locally; developer website/social links open externally only when clicked. A self-contained executable includes its runtime for first-launch offline use.
-
-Application installation uses the separately installed **Microsoft WinGet/App Installer**, internet, third-party sources and publisher installers. Source/package agreements are explicit in the app's confirmation. WinGet may be absent on some machines; the application provides an official App Installer link and Windows management fallback. Installers may show UAC or their own dialogs. Installer actions have no automatic undo; a timeout does not guarantee a child installer stopped. No claim of every installer being offline-capable is made.
-
-## Limits and validation status
-
-Validation: 65 automated checks passed, plus 40 full and 12 compact native UI renders. A fresh source copy built and published successfully; the portable ZIP was extracted separately and verified. These checks do not cover the live operations listed below.
-
-Automated fixture checks, compile checks and actual WPF rendering were run. The developer machine was only read/scanned. **Actual Windows preference mutation/undo, power switching, UAC relaunch and WinGet install/uninstall were not executed on the user's machine.** They require a disposable Windows 10/11 VM before public release. Screen-reader use and high-DPI/multiple-monitor behavior require manual checks. A native interface avoids a bundled browser engine but does not guarantee a particular RAM limit.
-
-The installed-app list reads desktop uninstall registrations; Store apps may be absent. Display names are not WinGet IDs. Startup inspection excludes services and scheduled tasks. Suggestions and personalization differ by Windows version/policy. Available power plans depend on hardware. No registry cleaner, antivirus disabling, driver updater, scheduled service, “RAM booster” or guaranteed FPS claim is included.
-
-## Try the preview
-
-1. Switch language and appearance; close/reopen to confirm they persist.
-2. Resize and use Tab/Shift+Tab, Space, Enter, Escape, minimize and maximize.
-3. Run a cleanup scan; verify Prefetch and crash dumps remain unselected. Open review and cancel; no files should be deleted.
-4. Inspect performance/privacy explanations and the current saved preference. Read startup entries and available power plans.
-5. Compare the hardware snapshot with Task Manager, then refresh. Search for Firefox and Task Manager; filter the app library and select two apps without starting installation. Resize to check the compact queue and catalog.
-6. In a disposable VM, test one preference change and undo; then power switching/undo, UAC, known-app install/uninstall and a controlled cleanup. Do not use important personal files as test fixtures.
+Try language/theme persistence, resize, Tab/Shift+Tab/Space/Enter/Escape, read-only scan, exclude one file and cancel deletion. Inspect settings/startup/power without applying. Read desktop/Store inventory; export and inspect diagnostics. Test live mutations/UAC/installers only in a disposable VM with a snapshot.
 
 ## License and developer
 
-Source: [MIT](LICENSE), copyright 2026 Crelyn Studio. Included .NET and Windows Desktop runtime components have their own licenses/notices. Crelyn Studio names and logos are reserved brand assets; the software license grants no trademark rights. See [third-party notices](THIRD-PARTY-NOTICES.txt).
+[MIT](LICENSE), copyright 2026 Crelyn Studio. Microsoft runtimes have separate notices. Names/logos remain reserved brand assets; MIT grants no trademark rights. [Third-party notices](THIRD-PARTY-NOTICES.txt).
 
-**Developed by Crelyn Studio.** [Website](https://crelynstudio.com) · [Email](mailto:info@crelynstudio.com) · [GitHub](https://github.com/crelynstudio). Developer details and social links are also available inside the app. Independently implemented; not affiliated with Microsoft or Chris Titus Tech. No WinUtil code is bundled.
+**Developed by Crelyn Studio.** [Website](https://crelynstudio.com) · [Email](mailto:info@crelynstudio.com) · [GitHub](https://github.com/crelynstudio). Developer/social links are in the app. Not affiliated with Microsoft or Chris Titus Tech; no WinUtil code bundled. [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md).
 
 ---
 
 # Türkçe
 
-**Clearwell, işlemleri açıklayarak sunan Windows bakım aracıdır.** C# / WPF tabanlı yerel masaüstü uygulaması; İngilizce/Türkçe, açık/koyu tema ve değişiklikten önce inceleme akışı sunar.
+Her değişiklikten önce inceleme sunan yerel Windows bakım aracı. C# / WPF, İngilizce/Türkçe ve açık/koyu görünüm. Veriler cihazda kalır; telemetri, hesap veya API anahtarı yoktur.
 
-**0.2.0-preview.1 geliştirme sürümüdür. Önizleme yayını onaylandı.** Windows 10 ve gerçek sistem değişiklikleri yalıtılmış makinelerde ayrıca doğrulanmalıdır.
+**0.3.0-preview.1 imzasız geliştirme önizlemesidir; kararlı sürüm değildir.** Windows 10/11 sanal makinelerinde gerçek ayar/güç/UAC/kurucu testleri tamamlanmalıdır.
 
-## Özellikler
+[Önizlemeyi indir](https://github.com/crelynstudio/crelyn-studio-clearwell/releases/tag/v0.3.0-preview.1) · [Değişiklikler](CHANGELOG.md) · [36 bulgunun durumu](docs/AUDIT-2026-10.md)
 
-- Gerçek işlemci, etkin görüntü bağdaştırıcısı, cihaz modeli ve Windows sürümü; isteğe bağlı yenilenen fiziksel bellek grafiği ve sabit birim çubukları. Sürekli izleme hizmeti yoktur.
-- Grafit gri/mavi arayüz, açık ve koyu görünüm, sade pencere başlığı ve ayrı Keşfet / Kurulu uygulamalar görünümleri. Özgün harfsiz simge, veri katmanlarını temizleme hareketiyle birleştirir.
-- Sayfa, tercih, uygulama ve Windows araçlarında arama; kategori/ad filtreli uygulama kütüphanesi, incelenebilir seçim ve sıralı kurulum. İlk kurulum hatasında sıra durur.
-- Görev Yöneticisi, Aygıt Yöneticisi, depolama, kurtarma ve Windows Update dahil on yerleşik Windows aracına erişim. Kısayollar ilkeleri kendiliğinden değiştirmez.
-- Standart kullanıcı Temp, Windows Temp, Prefetch ve çökme dökümlerini salt okunur tarama; seçili dosyaları onaydan sonra kalıcı silme.
-- Son 24 saatte değişen, bağlantılı, kilitli veya taramadan sonra değişmiş dosyaları atlama. Prefetch ve çökme dökümleri başlangıçta seçili değildir.
-- Oyun kaydı, görsel efektler ve gizlilik tercihlerini etkilerini açıklayarak uygulama; eski değerleri geri almak için kaydetme.
-- Başlangıç kayıtlarını inceleme; açıp kapatma için Windows Ayarları'na geçme.
-- WinGet ile seçilmiş katalogdan veya tam paket kimliğiyle kurma/kaldırma; Windows uygulama yönetimine erişim.
-- Cihazda bulunan güç planlarını listeleme, değiştirme ve önceki plana dönme.
-- Özel pencere düğmeleri, klavye odağı, yeniden boyutlandırma, azaltılmış hareket desteği ve kalıcı dil/tema tercihleri.
+Bağlantı yayından sonra açılır. Clearwell-0.3.0-preview.1-win-x64.zip uygulama paketidir; GitHub'ın otomatik kaynak ZIP'i çalıştırılabilir paket değildir.
 
-![Türkçe açık temada temizlik ekranı](docs/screenshots/cleanup-turkish-light.png)
-![Türkçe koyu temada Crelyn Studio tanıtımı ve bağlantıları](docs/screenshots/studio-about-turkish-dark.png)
+![Örnek dosyalarla Türkçe tekil temizlik incelemesi](docs/screenshots/cleanup-review-turkish.png)
 
-Ekran görüntüleri çalışan uygulamadan alınmıştır. Donanım ve temizlik miktarları geliştirme ortamındaki gerçek sonuçlardır; performans vaadi değildir. Kütüphanedeki seçim yalnızca kurulum sırasını gösterir; uygulamalar kurulmadı. Kullanıcı adını göstermemek için yollar sembolik sunulur.
+## Yenilikler ve özellikler
 
-## Çalıştırma ve geliştirme
+- Dosya adı/tam yol/boyut/zaman/kategoriyle tekil inceleme, filtre, dosya hariç tutma ve CSV aktarımı. Silme dosya kimliğini yeniden doğrular.
+- Son 1/7/30 günü koruma; yeni varsayılan **7 gün**. Gelişmiş kategoriler başlangıçta seçili değildir. Kısmi tarama uyarısı/ek onay; erişim/kilit/bağlantı/G/Ç nedenleri.
+- Kurulum/sıra sırasında iptal isteği, mümkün olan süreç ağacını durdurma ve ayrılmış kurucularda açık belirsizlik. Hata/doğrulanamayan envanterde sıra durur. Tam paket/kaynak doğrulaması ve kaldırma öncesi hedef incelemesi. WinGet için mutlak PATH yolları da aranır.
+- Bozuk tercihler sağlam kurtarma geçmişini engellemez; düzeltme bozuk aslı korur. Eski geçmiş okunur, yeni yazımlar sürümlüdür. Yalnız geri alınmış kayıtlar arşivlenir; bekleyen/uygulanmış kayıtlar korunur.
+- Tam yol/kurucu çıktısı içermeyen son 200 yerel etkinlik; yerel sürüm/platform/hata raporu. İsteğe bağlı geçerli kullanıcı Store/MSIX envanteri.
+- Windows derleme/test/paket ve salt okunur katalog iş akışları; tek komutla ZIP/SHA-256/bağımsız kontrol. GitHub CI, kaynak yüklendikten sonra ayrıca çalışmalıdır.
+- Gerçek işlemci/grafik/Windows/bellek/disk bilgileri; isteğe bağlı yenileme. Sayfa/ayar/araç/112 uygulamada arama ve sıralı kurulum. WhatsApp Microsoft Store kullanır; uygulamaların lisans/hesap koşulları farklıdır. Kısmi başlangıç, on Windows aracı, kullanıcıya özgü ayarlar, mevcut güç planları ve desteklenen işlemleri geri alma. FPS/hız artışı vaat edilmez.
 
-Geliştirme sürümü klasöründeki `Clearwell.exe` dosyasını açın. Lisans ve bildirim dosyalarını yanında tutun. .NET içerir; ayrıca kurmanız gerekmez. İmzasız geliştirme sürümü olduğundan Windows itibar uyarısı gösterebilir. Güvenlik ayarlarını kapatmanız gerekmez.
+Görüntüler bu sürümden alınmıştır. İnceleme görüntüleri **örnek test dosyalarını** gösterir; doğrulama kipinde test klasörü %TEST_FIXTURE% olarak görünür. Normal kullanımda tam yerel yollar gösterilir. Donanım/tarama miktarları gerçek geliştirme cihazı sonuçlarıdır; performans vaadi değildir.
 
-Önce standart yetkilerle kullanın. Windows Temp ve Prefetch için bazı dosyalar atlanabilir. Yönetici olarak yeniden başlatma Windows izni ister; otomatik temizlik başlatmaz. Farklı yönetici hesabının ayarları/geçmişi ayrıdır.
+## Çalıştırma ve güncelleme
 
-Hedef Windows 10 22H2 ve Windows 11 x64'tür; şu an yalnızca geliştirme ortamındaki Windows 11 denendi. ARM64/x86 sürümü yoktur. Açılış ve büyütme mevcut monitörün kullanılabilir alanına sığar; monitöre göre DPI farkındalığı vardır. Olağan alt sınır 900 × 560 mantıksal pikseldir; ekran alanı daha küçükse sınır azaltılır. İçerik kaydırılabilir. Farklı DPI kullanan fiziksel monitörler arasında geçiş kullanıcı denemesi bekler.
+1. ZIP ve .zip.sha256 dosyasını indirin. Get-FileHash .\Clearwell-0.3.0-preview.1-win-x64.zip -Algorithm SHA256 çıktısını karşılaştırın. Hash kod imzası değildir.
+2. Eski Clearwell'i kapatın, ZIP'i **yeni klasöre** açın; tüm lisans/bildirimleri koruyup Clearwell.exe çalıştırın. x64 .NET dahildir. Windows güvenliğini kapatmayın.
+3. Standart yetki ve salt okunur taramayla başlayın. Yönetici yeniden başlatması Windows izni ister; farklı hesabın verileri ayrıdır.
 
-Özgün Clearwell simgesinin vektör kaynağı `src/Clearwell/Assets/Brand.xaml` dosyasıdır. PNG ve altı boyutlu Windows simgesini yeniden üretmek için Windows üzerinde `powershell -NoProfile -STA -File .\tools\Export-Icon.ps1` çalıştırın.
+Önce %LOCALAPPDATA%\CrelynStudio\Clearwell klasörünü yedekleyin. Eski dizi biçimli geçmiş okunur, yeni yazımlar şema 1 kullanır. **Yeni kayıtlar kaydedildikten sonra aynı profille 0.2'ye dönmeyin**; eski uygulama yeni zarfı okuyamaz. Profil yedeği sonraki Windows değişikliklerini geri almaz.
 
-Kaynak kod için Windows, PowerShell ve .NET 10 SDK gerekir. İlk bağımlılık yükleme ve taşınabilir derleme Microsoft bileşenleri için internet gerektirir. Üçüncü taraf arayüz paketi yoktur. Depo kökünde:
+## Geliştirme ve test
 
-```powershell
-dotnet build Clearwell.slnx -c Release
-dotnet run --project src/Clearwell -c Release
+Windows x64, PowerShell ve global.json ile sabitlenmiş **.NET SDK 10.0.401** gerekir. İlk restore/yayın derlemesi Microsoft paketleri için internet ister. Üçüncü taraf arayüz paketi yoktur. Depo kökünde:
+
+~~~powershell
+dotnet restore Clearwell.slnx --locked-mode
+dotnet build Clearwell.slnx -c Release --no-restore
+dotnet run --project src/Clearwell -c Release --no-build
 dotnet run --project tests/Clearwell.Checks -c Release -- .\artifacts\kontrol-01
-powershell -NoProfile -File .\publish.ps1
-```
+.\build-release.ps1
+~~~
 
-Kontrol klasörü boş/yeni olmalıdır; her koşuda yeni ad kullanın. Testler yalnızca kendi dosyalarını oluşturup siler; sistem ayarı, uygulama veya güç planı değiştirmez. Mevcut güç planlarını okur. Derleme çıktısı `artifacts/Clearwell-0.2.0-preview.1-win-x64/` olur. Dağıtım için .NET lisans/bildirimlerini de kopyalayan `publish.ps1` kullanılmalıdır.
+Test klasörü yeni/boş olmalıdır. Testler yalnız kendi dosyalarını siler; junction ve süreç iptalini sınar; gerçek donanım/güç planlarını salt okunur okur. Windows ayarlarını değiştirmez/uygulama kurmaz. build-release.ps1 test, derleme, ZIP, SHA-256, bağımsız çıkarma ve sürüm/arayüz kontrolü yapar. Çıktılar artifacts/releases/, kanıtlar artifacts/release-validation-*/ altındadır. Mevcut yayınların üzerine yazılmaz. Provenance imzasız yerel derleme kaydıdır; resmi tedarik zinciri kanıtı değildir.
 
-İsteğe bağlı arayüz kontrolü için üstteki `--verify-ui` komutunu kullanın. İki dil/temada gerçek ekranlar üretir; küçük pencereyi, onay iptalini, salt okunur taramayı, güç planı okumasını ve ayrı profilde tercih kaydını kontrol eder. Sonucu `result.txt` dosyasına yazar. Sistem değişikliği veya temizlik çalıştırmaz. `artifacts`, `bin`, `obj` klasörlerini GitHub'a elle yüklemeyin.
+publish.ps1 yalnız taşınabilir klasör/lisansları üretir. PowerShell 7 ile pwsh -NoProfile -File .\tools\Check-Catalog.ps1 salt okunur katalog sorgular; kurulum/yeni kaynak sözleşmesi kabulü yapmaz. Kaynak/ağ/bölge hataları ayrıca incelenir. Clearwell.exe --verify-ui <yeni-klasör> yalıtılmış profille dil/tema/kompakt görünüm, diyalog/hariç tutma ve salt okunur taramayı sınar; result.txt yazıp kapanır. Sistem değişikliği yapmaz. Simge üretimi: powershell -NoProfile -STA -File .\tools\Export-Icon.ps1; vektör kaynağı Assets/Brand.xaml.
 
-## Gizlilik, kurtarma ve sınırlar
+## Güvenlik, gizlilik ve sınırlar
 
-Tercihler `%LOCALAPPDATA%\CrelynStudio\Clearwell\preferences.json`, ayar/güç kurtarma kayıtları aynı yerdeki `changes.json` dosyasında tutulur. Geçmişte ayar kimliği, önceki/yeni değer, zaman ve durum bulunur. Dosya listesi/telemetri gönderilmez. Kullanıcı başına tek örnek çalışır. Geri alma istiyorsanız geçmişi silmeyin.
+- **Silme kalıcıdır; karantina/Geri Dönüşüm Kutusu/geri alma yoktur.** Diğer uygulamaları kapatın, dosyaları inceleyin, önemli verileri yedekleyin. Yeni/bağlantılı/değişmiş/değiştirilmiş/erişilemeyen dosyalar korunur. Tarama kazanılacak alan garantisi değildir.
+- Standart kullanıcı/Windows Temp, Prefetch ve çökme dökümleri taranır. Adı Temp/tmp olan, korunan kökleri kapsamayan ve bağlantılı atası bulunmayan özel yerel TEMP gelişmiş/seçili olmayan kategori olarak görünür. UNC, profil/geniş kökler ve diğer özel adlar güvenlik amacıyla dışlanır. Kimlik doğrulamalı silme korunur.
+- Ayar/güç öncesi özgün değer kaydedilir. Geri al, kesilen/zaten geri dönmüş işlemi uzlaştırır; önce ilgili son kayıt geri alınır, dış değişikliklerin üzerine yazılmaz. Yeni değişiklikler DWORD olmayan kayıt değerlerini reddeder; eski String özgün değerler geri yüklenebilir. Sistem yedeği değildir.
+- Etkinlik yerel/sınırlı/kurtarmadan ayrıdır. CSV tam yollar içerir; paylaşmadan inceleyin. Destek raporu sürüm/platform/işlem alanı/sonucu/hata kodu içerir; otomatik gönderim yoktur.
+- Arayüz/temizlik/geçmiş/yerel ayarlar kurulumdan sonra çevrimdışı çalışır. WinGet/katalog kaynakları ağ isteyebilir. Analitik/CDN/arka plan hizmeti yoktur.
+- Ayrılmış/yükseltilmiş kurucu iptal sonrası devam edebilir; yeniden denemeden pencerelerini ve envanteri kontrol edin. Doğrulanamamak yokluk kanıtı değildir. Kurma/kaldırmada otomatik geri alma yoktur.
+- Masaüstü envanteri kaldırma kayıtlarından okunur. Appx/MSIX yalnız geçerli kullanıcıyı kapsar ve Windows paketlerini içerebilir. Başlangıç görünümü hizmet/görev/RunOnce'u kapsamaz.
+- Paket x64'tür. Windows 11 yerelde denendi; Windows 10 22H2 VM doğrulaması bekler. ARM64/x86 yoktur. Gerçek ekran okuyucu, fiziksel %125/%150/%200 DPI, çoklu monitör ve yüksek kontrast kullanıcı testleri bekler. Otomatik görüntü/geometri testleri bunların yerine geçmez.
+- Kod imzası yoktur. Canlı işlem/erişilebilirlik matrisi tamamlanmadan kararlı sürüm iddiası yoktur. 36 bulgunun durumu denetim belgesindedir.
 
-Özgün değerler değişiklikten önce kaydedilir. Bozuk/okunamayan kurtarma verileri korunur ve yeni ayar/güç değişiklikleri engellenir. Kesilmiş işlem bekliyor görünür. Başka program mevcut değeri değiştirmişse geri alma üzerine yazmayı reddeder. Oturumu kapatma/yeniden başlatma gerekebilir; sistem ilkeleri tercihleri geçersiz kılabilir. **Bu mekanizma tam sistem yedeği veya Windows geri yükleme noktası değildir.**
+Dil/tema kalıcılığını, klavye/boyutlandırmayı deneyin. Tarayın, tekil listede dosya hariç tutun, silmeyi iptal edin. Ayar/başlangıç/gücü uygulamadan inceleyin, masaüstü/Store envanterini okuyun, tanı raporunu dışa aktararak kontrol edin. Gerçek değişiklikleri yalnız anlık görüntülü, gözden çıkarılabilir VM'de sınayın.
 
-Dosya silme kalıcıdır. Silmeden önce dosya bilgileri ve gerçek dosya tanıtıcısı yeniden kontrol edilir. Her kategoride 100.000 öğe sınırı vardır; kısmi sonuç belirtilir. Standart konumlar taranır; başka konuma taşınmış `%TEMP%` taranmaz. Prefetch silmek garantili hız artışı sağlamaz; çökme dökümleri hata araştırmada gerekli olabilir.
+## Lisans ve geliştirici
 
-Arayüz, temizlik, ayar ve güç işlemleri ağ isteği yapmaz; hesap/API anahtarı istemez. Yerel Windows bağlantıları ayarları açar. Geliştirici/sosyal bağlantılar yalnızca tıklanınca dışarıda açılır. Taşınabilir sürüm çalışma zamanını içerdiğinden ilk açılış için .NET indirmez.
+Kaynak [MIT](LICENSE), telif 2026 Crelyn Studio. Microsoft çalışma zamanlarının ayrı bildirimleri vardır. Marka/logo hakları saklıdır; MIT marka hakkı vermez. [Üçüncü taraf bildirimleri](THIRD-PARTY-NOTICES.txt).
 
-Uygulama kurmak ayrı kurulu Microsoft WinGet/App Installer, internet ve yayıncı kurucuları gerektirir. Kaynak/paket sözleşmeleri onayda açıklanır. WinGet yoksa resmi App Installer bağlantısı ve Windows yönetim seçeneği gösterilir. Kurucular yönetici izni veya kendi pencerelerini açabilir. Kurma/kaldırmanın otomatik geri alması yoktur. Zaman aşımı alt kurucunun durduğunu garanti etmez; tüm kurulumların çevrimdışı çalıştığı iddia edilmez.
-
-Otomatik dosya güvenliği kontrolleri, derleme ve WPF ekran üretimi çalıştırıldı. Kullanıcının bilgisayarında yalnızca okuma/tarama yapıldı. **Gerçek ayar değiştirme/geri alma, güç değiştirme, yönetici yeniden başlatması ve WinGet kurma/kaldırma çalıştırılmadı.** Yayından önce geçici Windows 10/11 sanal makinesinde denenmelidir. Ekran okuyucu, yüksek DPI ve çoklu ekran manuel kontrol bekliyor. Sabit RAM sınırı garanti edilmez.
-
-Kurulu liste masaüstü kaldırma kayıtlarını okur; Store uygulamaları eksik olabilir. Uygulama adları WinGet kimliği değildir. Başlangıç incelemesi hizmet/zamanlanmış görevleri kapsamaz. Gizlilik/öneriler Windows sürümüne ve ilkelere göre değişir. Güç planları donanıma bağlıdır. Kayıt defteri temizliği, antivirüs kapatma, sürücü güncelleme, arka plan hizmeti, RAM boşaltıcı veya FPS garantisi yoktur.
-
-## Deneme listesi
-
-Kütüphanede tarayıcılar, iletişim, geliştirme, medya, üretkenlik, yardımcı araçlar, oyunlar ve çalışma zamanları olmak üzere sekiz kategoride 112 uygulama bulunur. WhatsApp, Microsoft Store üzerinden kurulur; WhatsApp hesabı ve Store erişimi gerekir. Örnekler: WinRAR, Acrobat Reader, Microsoft Office, Visual Studio, HWiNFO, Steam, .NET, Visual C++ ve DirectX. Yayıncı gereksinimleri, hesap ihtiyacı ve lisanslar uygulamaya göre değişir.
-
-Doğrulama: 65 otomatik kontrol, 40 tam ve 12 küçük yerel arayüz görünümü geçti. Temiz kaynak kopyasında derleme ve taşınabilir sürüm üretimi doğrulandı; ZIP ayrı klasöre açılarak denendi. Bu kontroller yukarıda belirtilen gerçek sistem değişikliği denemelerini kapsamaz.
-
-1. Dil/temayı değiştirin; uygulamayı kapatıp açınca korunduğunu kontrol edin.
-2. Pencereyi boyutlandırın; Tab/Shift+Tab, Space, Enter, Escape, küçültme ve büyütmeyi deneyin.
-3. Temizlik taraması yapın; Prefetch/dökümler seçilmemiş olsun. İncelemeyi açıp iptal edin; hiçbir dosya silinmemeli.
-4. Ayar açıklamalarını ve kayıtlı tercihi inceleyin. Başlangıç kayıtlarını ve güç planlarını okuyun.
-5. Geçici sanal makinede bir ayarı değiştirip geri alın; güç, yönetici izni, uygulama kurma/kaldırma ve kontrollü temizlik deneyin. Önemli dosyaları test girdisi yapmayın.
-6. Donanım özetini Görev Yöneticisi ile karşılaştırıp yenileyin. Firefox ve Aygıt Yöneticisi arayın; kütüphaneyi filtreleyip kurulumu başlatmadan iki uygulama seçin. Küçük pencerede seçim şeridini ve kataloğu inceleyin.
-
-Kaynak kod [MIT](LICENSE) lisanslıdır. Telif: 2026 Crelyn Studio. .NET bileşenlerinin kendi lisansları vardır. Marka/logo hakları yazılım lisansından ayrıdır; [bildirimleri](THIRD-PARTY-NOTICES.txt) inceleyin.
-
-**Crelyn Studio tarafından geliştirildi.** [Web sitesi](https://crelynstudio.com) · [E-posta](mailto:info@crelynstudio.com) · [GitHub](https://github.com/crelynstudio). Uygulamadaki Hakkında alanında diğer profiller bulunur. Microsoft/Chris Titus Tech ile bağlantısı yoktur; WinUtil kodu kullanılmamıştır.
+**Crelyn Studio tarafından geliştirildi.** [Web sitesi](https://crelynstudio.com) · [E-posta](mailto:info@crelynstudio.com) · [GitHub](https://github.com/crelynstudio). Uygulamada geliştirici/sosyal bağlantılar vardır. Microsoft veya Chris Titus Tech ile bağlantısı yoktur; WinUtil kodu içermez. [Katkı](CONTRIBUTING.md) · [Güvenlik](SECURITY.md).

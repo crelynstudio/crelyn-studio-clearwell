@@ -29,7 +29,7 @@ public static class SystemSettings
         var original = Read(setting);
         if (original == setting.Desired.ToString()) return;
         var kind = original == null ? RegistryValueKind.DWord : existing!.GetValueKind(setting.Value);
-        if (kind is not (RegistryValueKind.DWord or RegistryValueKind.String)) throw new InvalidDataException("Unsupported registry type.");
+        if (kind != RegistryValueKind.DWord) throw new InvalidDataException("Expected a DWORD preference. Clearwell will not change a nonstandard registry type.");
         var change = new ChangeRecord { Target = setting.Id, Before = original, ValueKind = kind, After = setting.Desired.ToString() };
         store.Add(change);
         using var key = Registry.CurrentUser.CreateSubKey(setting.Key, true);
@@ -42,8 +42,18 @@ public static class SystemSettings
     {
         if (store.Damaged) throw new InvalidDataException("Recovery data is damaged.");
         if (change.Kind != "registry" || change.State is not ("applied" or "pending")) throw new InvalidOperationException();
+        if (!store.IsLatest(change)) throw new InvalidOperationException("Undo the latest related record first.");
         var setting = All.Single(s => s.Id == change.Target);
-        if (change.After != setting.Desired.ToString() || Read(setting) != change.After)
+        using var existing = Registry.CurrentUser.OpenSubKey(setting.Key);
+        var current = Read(setting);
+        var currentKind = current == null ? RegistryValueKind.None : existing!.GetValueKind(setting.Value);
+        if (current == change.Before && (current == null || currentKind == change.ValueKind))
+        {
+            change.State = "undone";
+            store.SaveChanges();
+            return;
+        }
+        if (change.After != setting.Desired.ToString() || current != change.After || currentKind != RegistryValueKind.DWord)
             throw new InvalidOperationException("The value has changed outside Clearwell.");
         using var key = Registry.CurrentUser.CreateSubKey(setting.Key, true);
         if (change.Before == null) key.DeleteValue(setting.Value, false);

@@ -4,9 +4,9 @@ using Microsoft.Win32;
 
 namespace Clearwell.Core;
 
-public record CommandResult(int Code, string Output);
+public record CommandResult(int Code, string Output, bool Interrupted = false, bool? Verified = null);
 public record PowerPlan(string Id, string Name, bool Active);
-public record InstalledApp(string Name, string Version, string Publisher);
+public record InstalledApp(string Name, string Version, string Publisher, string Source = "Desktop");
 public record StartupEntry(string Name, string Command, string Location);
 public record AppPackage(string Id, string Name, string Category, string DescriptionEn, string DescriptionTr, string Source = "winget");
 
@@ -129,21 +129,29 @@ public static partial class WindowsTools
 
     public static async Task<CommandResult> Run(string executable, IEnumerable<string> arguments, CancellationToken token, int timeoutSeconds = 60)
     {
+        token.ThrowIfCancellationRequested();
         var start = new ProcessStartInfo(executable) { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
         foreach (var arg in arguments) start.ArgumentList.Add(arg);
         using var process = Process.Start(start) ?? throw new IOException("Process could not start.");
-        var stdout = ReadTail(process.StandardOutput, token);
-        var stderr = ReadTail(process.StandardError, token);
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(token);
         limit.CancelAfter(TimeSpan.FromSeconds(timeoutSeconds));
-        try { await process.WaitForExitAsync(limit.Token); }
+        var stdout = ReadTail(process.StandardOutput, limit.Token);
+        var stderr = ReadTail(process.StandardError, limit.Token);
+        try
+        {
+            await process.WaitForExitAsync(limit.Token);
+            await Task.WhenAll(stdout, stderr).WaitAsync(limit.Token);
+            return new(process.ExitCode, (await stdout + "\n" + await stderr).Trim());
+        }
         catch (OperationCanceledException)
         {
-            // Installer descendants may have their own UAC boundary; do not claim cancellation rolled them back.
-            try { process.Kill(false); } catch (InvalidOperationException) { }
-            throw;
+            // Elevated or detached installers can escape the tree; cancellation is never a rollback guarantee.
+            limit.Cancel();
+            try { process.Kill(entireProcessTree: true); } catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception or NotSupportedException) { }
+            try { await Task.WhenAll(stdout, stderr); } catch (Exception e) when (e is OperationCanceledException or IOException) { }
+            if (token.IsCancellationRequested) throw;
+            throw new TimeoutException("Process timed out; detached installers may still be running.");
         }
-        return new(process.ExitCode, (await stdout + "\n" + await stderr).Trim());
     }
     private static async Task<string> ReadTail(StreamReader reader, CancellationToken token)
     {
@@ -162,14 +170,17 @@ public static partial class WindowsTools
     {
         var result = await Run(PowerCfg, ["/list"], token);
         if (result.Code != 0) throw new IOException(result.Output);
-        return result.Output.Split('\n').Select(line => (line, match: PlanPattern().Match(line)))
-            .Where(x => x.match.Success).Select(x => new PowerPlan(x.match.Groups[1].Value, x.match.Groups[2].Value, x.line.Contains('*'))).ToList();
+        return ParsePowerPlans(result.Output);
     }
+    public static List<PowerPlan> ParsePowerPlans(string output) => output.Split('\n').Select(line => (line, match: PlanPattern().Match(line)))
+            .Where(x => x.match.Success).Select(x => new PowerPlan(x.match.Groups[1].Value, x.match.Groups[2].Value, x.line.Contains('*'))).ToList();
     public static async Task SetPower(PowerPlan plan, LocalStore store, CancellationToken token)
     {
         var plans = await PowerPlans(token);
         if (!plans.Any(p => p.Id == plan.Id)) throw new InvalidOperationException();
-        var previous = plans.Single(p => p.Active);
+        var active = plans.Where(p => p.Active).ToArray();
+        if (active.Length != 1) throw new IOException("Windows did not identify exactly one active power plan.");
+        var previous = active[0];
         if (previous.Id == plan.Id) return;
         var change = new ChangeRecord { Kind = "power", Target = plan.Id, Before = previous.Id, After = plan.Id };
         store.Add(change);
@@ -183,7 +194,10 @@ public static partial class WindowsTools
     {
         if (store.Damaged) throw new InvalidDataException("Recovery data is damaged.");
         if (change.Kind != "power" || change.State is not ("pending" or "applied") || !Guid.TryParse(change.Before, out _)) throw new InvalidDataException();
+        if (!store.IsLatest(change)) throw new InvalidOperationException("Undo the latest power change first.");
         var plans = await PowerPlans(token);
+        if (plans.Any(p => p.Id == change.Before && p.Active))
+        { change.State = "undone"; store.SaveChanges(); return; }
         if (!plans.Any(p => p.Id == change.After && p.Active) || !plans.Any(p => p.Id == change.Before)) throw new InvalidOperationException();
         var result = await Run(PowerCfg, ["/setactive", change.Before!], token);
         if (result.Code != 0) throw new IOException(result.Output);
@@ -195,18 +209,49 @@ public static partial class WindowsTools
     public static string? FindWinget()
     {
         var alias = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "WindowsApps", "winget.exe");
-        return File.Exists(alias) ? alias : null;
+        if (File.Exists(alias)) return alias;
+        foreach (var directory in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+        {
+            try
+            {
+                if (!Path.IsPathFullyQualified(directory.Trim('"'))) continue;
+                var candidate = Path.Combine(directory.Trim('"'), "winget.exe");
+                if (File.Exists(candidate)) return candidate;
+            }
+            catch (ArgumentException) { }
+        }
+        return null;
     }
     public static async Task<CommandResult> PackageAction(string id, bool install, CancellationToken token)
     {
         var args = PackageArguments(id, install);
         var executable = FindWinget() ?? throw new FileNotFoundException("WinGet is missing.");
-        return await Run(executable, args, token, 1800);
+        CommandResult result;
+        try { result = await Run(executable, args, token, 1800); }
+        catch (Exception e) when (e is OperationCanceledException or TimeoutException)
+        { return new(-1, "Installation state is unknown / Kurulum durumu bilinmiyor. Detached installers may continue / Ayrılan kurucular devam edebilir.", true); }
+        try
+        {
+            var query = await QueryPackage(id, CancellationToken.None);
+            var installed = PackagePresence(query.Code);
+            return result with { Verified = installed == null ? null : install == installed };
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or System.ComponentModel.Win32Exception)
+        { return result with { Verified = null }; }
+    }
+    public static bool? PackagePresence(int code) => code == 0 ? true : unchecked((uint)code) == 0x8A150014 ? false : null;
+    public static Task<CommandResult> QueryPackage(string id, CancellationToken token)
+    {
+        if (!ValidPackageId(id)) throw new ArgumentException("Invalid package ID.");
+        var source = Catalog.FirstOrDefault(p => p.Id.Equals(id, StringComparison.OrdinalIgnoreCase))?.Source ?? "winget";
+        return Run(FindWinget() ?? throw new FileNotFoundException("WinGet is missing."),
+            ["list", "--id", id, "--exact", "--source", source, "--disable-interactivity"], token, 15);
     }
     public static List<string> PackageArguments(string id, bool install)
     {
         if (!ValidPackageId(id)) throw new ArgumentException("Invalid package ID.");
         var args = new List<string> { install ? "install" : "uninstall", "--id", id, "--exact", "--disable-interactivity" };
+        if (!install) args.AddRange(["--source", Catalog.FirstOrDefault(p => p.Id.Equals(id, StringComparison.OrdinalIgnoreCase))?.Source ?? "winget"]);
         if (install) args.AddRange(["--source", Catalog.FirstOrDefault(p => p.Id.Equals(id, StringComparison.OrdinalIgnoreCase))?.Source ?? "winget", "--accept-source-agreements", "--accept-package-agreements"]);
         return args;
     }
@@ -231,6 +276,14 @@ public static partial class WindowsTools
             }
         }
         return apps.DistinctBy(a => a.Name + a.Version).OrderBy(a => a.Name).ToList();
+    }
+    public static async Task<List<InstalledApp>> StoreApps(CancellationToken token)
+    {
+        var powershell = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe");
+        var result = await Run(powershell, ["-NoProfile", "-NonInteractive", "-Command", "$ErrorActionPreference='Stop'; [Console]::OutputEncoding=[Text.UTF8Encoding]::new(); ConvertTo-Json -InputObject @(Get-AppxPackage | Where-Object { -not $_.IsFramework -and -not $_.IsResourcePackage } | Select-Object Name,@{n='Version';e={$_.Version.ToString()}},Publisher) -Compress"], token);
+        if (result.Code != 0) throw new IOException("Windows could not read the current user's MSIX/Appx inventory.");
+        try { return (System.Text.Json.JsonSerializer.Deserialize<List<InstalledApp>>(result.Output) ?? []).Select(a => a with { Source = "MSIX / Appx" }).ToList(); }
+        catch (System.Text.Json.JsonException e) { throw new InvalidDataException("Windows returned an unreadable Store inventory.", e); }
     }
     public static List<StartupEntry> StartupEntries()
     {
