@@ -20,7 +20,7 @@ jobs:
       - name: Build, checks, package and independent UI smoke
         shell: pwsh
         run: ./build-release.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6.0.0
         if: always()
         with:
           name: clearwell-preview-evidence

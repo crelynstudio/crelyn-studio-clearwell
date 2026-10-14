@@ -14,8 +14,10 @@ jobs:
         with:
           persist-credentials: false
       - shell: pwsh
-        run: ./tools/Check-Catalog.ps1
-      - uses: actions/upload-artifact@v4
+        run: |
+          ./tests/Catalog.Checks.ps1
+          ./tools/Check-Catalog.ps1
+      - uses: actions/upload-artifact@v6.0.0
         if: always()
         with:
           name: catalog-health
